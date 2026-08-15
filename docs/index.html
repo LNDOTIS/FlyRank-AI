@@ -1,0 +1,2644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Predicting Near-Term Organic Search Decline | Long Nguyen</title>
+
+  <meta name="description"
+        content="A machine learning study on predicting near-term organic search decline using historical search-performance and content-lifecycle signals.">
+  <meta name="author" content="Long Nguyen">
+
+  <style>
+    :root {
+      --bg: #f7f8fa;
+      --surface: #ffffff;
+      --surface-soft: #f1f3f6;
+      --text: #17191c;
+      --muted: #667085;
+      --border: #e4e7ec;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --green: #15803d;
+      --green-soft: #ecfdf3;
+      --orange: #c2410c;
+      --orange-soft: #fff7ed;
+      --red: #b91c1c;
+      --red-soft: #fef2f2;
+      --code: #111827;
+      --shadow: 0 4px 20px rgba(16, 24, 40, 0.06);
+      --radius: 12px;
+      --max-width: 1180px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* =========================
+       Layout
+    ========================= */
+
+    .page {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 0 28px 80px;
+    }
+
+    .hero {
+      padding: 90px 0 70px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .hero-inner {
+      max-width: 900px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 18px;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 28px;
+      height: 2px;
+      background: var(--accent);
+      display: inline-block;
+    }
+
+    h1 {
+      font-size: clamp(40px, 6vw, 68px);
+      line-height: 1.05;
+      letter-spacing: -0.045em;
+      margin: 0 0 22px;
+      font-weight: 800;
+    }
+
+    .subtitle {
+      font-size: 20px;
+      line-height: 1.6;
+      color: var(--muted);
+      max-width: 820px;
+      margin: 0;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 30px;
+    }
+
+    .tag {
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    /* =========================
+       Main content
+    ========================= */
+
+    .content-layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 55px;
+      padding-top: 55px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 30px;
+      align-self: start;
+    }
+
+    .toc-title {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .toc a {
+      display: block;
+      padding: 7px 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .toc a:hover {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    main {
+      min-width: 0;
+    }
+
+    section {
+      margin-bottom: 80px;
+      scroll-margin-top: 30px;
+    }
+
+    h2 {
+      font-size: 30px;
+      line-height: 1.2;
+      letter-spacing: -0.025em;
+      margin: 0 0 26px;
+    }
+
+    h3 {
+      font-size: 20px;
+      line-height: 1.3;
+      margin: 38px 0 14px;
+    }
+
+    h4 {
+      font-size: 16px;
+      margin: 25px 0 10px;
+    }
+
+    p {
+      margin: 0 0 18px;
+    }
+
+    ul,
+    ol {
+      padding-left: 24px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    strong {
+      font-weight: 700;
+    }
+
+    blockquote {
+      margin: 25px 0;
+      padding: 20px 24px;
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      font-size: 17px;
+    }
+
+    /* =========================
+       Cards
+    ========================= */
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 25px;
+      box-shadow: var(--shadow);
+      margin: 24px 0;
+    }
+
+    .abstract {
+      font-size: 18px;
+      color: #343840;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin: 28px 0;
+    }
+
+    .metric {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .metric-value {
+      font-size: 30px;
+      line-height: 1.1;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 7px;
+    }
+
+    .callout {
+      padding: 22px 24px;
+      border-radius: var(--radius);
+      margin: 25px 0;
+      border: 1px solid var(--border);
+    }
+
+    .callout-blue {
+      background: var(--accent-soft);
+      border-color: #bfdbfe;
+    }
+
+    .callout-green {
+      background: var(--green-soft);
+      border-color: #bbf7d0;
+    }
+
+    .callout-orange {
+      background: var(--orange-soft);
+      border-color: #fed7aa;
+    }
+
+    .callout-red {
+      background: var(--red-soft);
+      border-color: #fecaca;
+    }
+
+    .callout-title {
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    /* =========================
+       Tables
+    ========================= */
+
+    .table-wrapper {
+      overflow-x: auto;
+      margin: 25px 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 650px;
+      font-size: 14px;
+    }
+
+    th {
+      text-align: left;
+      background: var(--surface-soft);
+      color: #344054;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    th,
+    td {
+      padding: 13px 15px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:hover {
+      background: #fafafa;
+    }
+
+    /* =========================
+       Code
+    ========================= */
+
+    code {
+      font-family:
+        "SFMono-Regular",
+        Consolas,
+        "Liberation Mono",
+        Menlo,
+        monospace;
+      font-size: 0.88em;
+      background: #eef2f7;
+      padding: 2px 6px;
+      border-radius: 5px;
+      color: #344054;
+    }
+
+    pre {
+      background: var(--code);
+      color: #e5e7eb;
+      padding: 20px;
+      border-radius: var(--radius);
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+    }
+
+    /* =========================
+       Action cards
+    ========================= */
+
+    .action-list {
+      display: grid;
+      gap: 16px;
+      margin: 25px 0;
+    }
+
+    .action {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      box-shadow: var(--shadow);
+    }
+
+    .action-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: white;
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+
+    .action h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    .reason {
+      display: inline-block;
+      font-family: monospace;
+      font-size: 12px;
+      background: var(--surface-soft);
+      padding: 4px 8px;
+      border-radius: 5px;
+      color: #475467;
+      margin-bottom: 12px;
+    }
+
+    /* =========================
+       Checklist
+    ========================= */
+
+    .checklist {
+      list-style: none;
+      padding: 0;
+    }
+
+    .checklist li {
+      position: relative;
+      padding-left: 30px;
+      margin-bottom: 12px;
+    }
+
+    .checklist li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      top: 1px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--green-soft);
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 800;
+      text-align: center;
+      line-height: 20px;
+    }
+
+    /* =========================
+       Footer
+    ========================= */
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 35px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .footer-inner {
+      max-width: var(--max-width);
+      margin: auto;
+      padding: 0 28px;
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    /* =========================
+       Responsive
+    ========================= */
+
+    @media (max-width: 900px) {
+      .content-layout {
+        grid-template-columns: 1fr;
+        gap: 20px;
+      }
+
+      .toc {
+        position: static;
+        padding: 18px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+      }
+
+      .toc-links {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 2px 18px;
+      }
+
+      .metric-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .page {
+        padding: 0 18px 60px;
+      }
+
+      .hero {
+        padding: 60px 0 50px;
+      }
+
+      h1 {
+        font-size: 42px;
+      }
+
+      .subtitle {
+        font-size: 17px;
+      }
+
+      h2 {
+        font-size: 26px;
+      }
+
+      .metric-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .toc-links {
+        grid-template-columns: 1fr;
+      }
+
+      .card {
+        padding: 19px;
+      }
+    }
+
+
+    /* =========================
+       Dynamic visual layer
+    ========================= */
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: -30% -10% auto;
+      height: 520px;
+      background:
+        radial-gradient(circle at 18% 40%, rgba(37, 99, 235, 0.10), transparent 32%),
+        radial-gradient(circle at 78% 25%, rgba(21, 128, 61, 0.08), transparent 28%),
+        radial-gradient(circle at 55% 75%, rgba(194, 65, 12, 0.06), transparent 30%);
+      pointer-events: none;
+      animation: heroGlow 12s ease-in-out infinite alternate;
+    }
+
+    .hero-inner {
+      position: relative;
+      z-index: 2;
+    }
+
+    .hero-visual {
+      margin-top: 42px;
+      position: relative;
+      min-height: 220px;
+      border: 1px solid rgba(37, 99, 235, 0.16);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.76);
+      box-shadow: 0 18px 60px rgba(16,24,40,0.08);
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+    }
+
+    .hero-visual::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(37,99,235,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(37,99,235,0.05) 1px, transparent 1px);
+      background-size: 32px 32px;
+      mask-image: linear-gradient(to bottom, black, transparent);
+      pointer-events: none;
+    }
+
+    .pipeline {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      padding: 34px;
+      min-height: 220px;
+      align-items: center;
+    }
+
+    .pipeline-node {
+      position: relative;
+      z-index: 2;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.94);
+      box-shadow: 0 8px 26px rgba(16,24,40,0.06);
+      text-align: center;
+      transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+    }
+
+    .pipeline-node:hover {
+      transform: translateY(-5px);
+      border-color: #93c5fd;
+      box-shadow: 0 14px 34px rgba(37,99,235,0.12);
+    }
+
+    .pipeline-icon {
+      width: 42px;
+      height: 42px;
+      margin: 0 auto 10px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .pipeline-label {
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .pipeline-sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    .pipeline-line {
+      position: absolute;
+      left: 12%;
+      right: 12%;
+      top: 50%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #bfdbfe, #93c5fd, #bfdbfe, transparent);
+      overflow: hidden;
+    }
+
+    .pipeline-line::after {
+      content: "";
+      position: absolute;
+      left: -20%;
+      top: -2px;
+      width: 20%;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 0 0 18px rgba(37,99,235,0.55);
+      animation: dataFlow 3.2s linear infinite;
+    }
+
+    .signal-orbit {
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #60a5fa;
+      box-shadow: 0 0 16px rgba(37,99,235,0.55);
+      animation: orbitFloat 5s ease-in-out infinite;
+      opacity: 0.8;
+    }
+
+    .signal-orbit.one { left: 16%; top: 25%; animation-delay: -1s; }
+    .signal-orbit.two { left: 44%; top: 68%; animation-delay: -3s; }
+    .signal-orbit.three { left: 78%; top: 30%; animation-delay: -2s; }
+
+    .live-panel {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: 1.4fr 0.6fr;
+      gap: 14px;
+    }
+
+    .live-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .live-label {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+    }
+
+    .live-value {
+      margin-top: 5px;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .risk-meter {
+      height: 8px;
+      margin-top: 12px;
+      border-radius: 999px;
+      background: #eef2f7;
+      overflow: hidden;
+    }
+
+    .risk-meter-fill {
+      height: 100%;
+      width: 97.3%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #60a5fa, #2563eb, #b91c1c);
+      transform-origin: left;
+      animation: meterPulse 3s ease-in-out infinite alternate;
+    }
+
+    .queue-table td,
+    .queue-table th {
+      vertical-align: middle;
+    }
+
+    .rank-pill {
+      display: inline-flex;
+      min-width: 30px;
+      height: 30px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 800;
+      font-size: 12px;
+    }
+
+    .probability {
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .probability-bar {
+      display: inline-block;
+      width: 80px;
+      height: 6px;
+      margin-left: 8px;
+      vertical-align: middle;
+      border-radius: 999px;
+      background: #eef2f7;
+      overflow: hidden;
+    }
+
+    .probability-bar span {
+      display: block;
+      height: 100%;
+      width: var(--prob);
+      background: var(--accent);
+      border-radius: inherit;
+      transform-origin: left;
+      animation: growBar 1.2s ease both;
+    }
+
+    .reason-mini {
+      display: inline-block;
+      font-family: monospace;
+      font-size: 11px;
+      background: var(--surface-soft);
+      padding: 4px 7px;
+      border-radius: 5px;
+      color: #475467;
+      white-space: nowrap;
+    }
+
+    .queue-action {
+      font-weight: 700;
+      color: #344054;
+    }
+
+    .queue-note {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 5px;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 700ms ease, transform 700ms ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .metric-value[data-count] {
+      font-variant-numeric: tabular-nums;
+    }
+
+    @keyframes dataFlow {
+      from { left: -20%; }
+      to { left: 100%; }
+    }
+
+    @keyframes orbitFloat {
+      0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+      50% { transform: translate3d(22px, -14px, 0) scale(1.25); }
+    }
+
+    @keyframes heroGlow {
+      from { transform: translate3d(-1%, 0, 0) scale(1); }
+      to { transform: translate3d(1%, 2%, 0) scale(1.05); }
+    }
+
+    @keyframes meterPulse {
+      from { transform: scaleX(0.96); opacity: 0.78; }
+      to { transform: scaleX(1); opacity: 1; }
+    }
+
+    @keyframes growBar {
+      from { transform: scaleX(0); }
+      to { transform: scaleX(1); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+      }
+
+      .reveal {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+  </style>
+</head>
+
+<body>
+
+<div class="page">
+
+  <!-- =========================
+       HERO
+  ========================== -->
+
+  <header class="hero">
+
+    <div class="hero-inner">
+
+      <div class="eyebrow">
+        Machine Learning · SEO · Decision Support
+      </div>
+
+      <h1>
+        Predicting Near-Term Organic Search Decline
+      </h1>
+
+      <p class="subtitle">
+        Can historical search-performance and content-lifecycle signals
+        identify content pages likely to experience a meaningful decline
+        in organic search impressions over the following 30 days?
+      </p>
+
+      <div class="meta">
+        <span class="tag">Long Nguyen</span>
+        <span class="tag">Growth / Recovery / Momentum Prediction</span>
+        <span class="tag">Content Decline Detection</span>
+        <span class="tag">August 31, 2026</span>
+      </div>
+
+      <div class="hero-visual" aria-label="Animated machine learning decision pipeline">
+        <div class="signal-orbit one"></div>
+        <div class="signal-orbit two"></div>
+        <div class="signal-orbit three"></div>
+        <div class="pipeline-line"></div>
+
+        <div class="pipeline">
+          <div class="pipeline-node">
+            <div class="pipeline-icon">DATA</div>
+            <div class="pipeline-label">Historical signals</div>
+            <div class="pipeline-sub">Impressions · clicks · position</div>
+          </div>
+
+          <div class="pipeline-node">
+            <div class="pipeline-icon">ML</div>
+            <div class="pipeline-label">Logistic Regression</div>
+            <div class="pipeline-sub">Five pre-decision features</div>
+          </div>
+
+          <div class="pipeline-node">
+            <div class="pipeline-icon">RISK</div>
+            <div class="pipeline-label">Decline probability</div>
+            <div class="pipeline-sub">Rank pages by measured risk</div>
+          </div>
+
+          <div class="pipeline-node">
+            <div class="pipeline-icon">HUMAN</div>
+            <div class="pipeline-label">Review queue</div>
+            <div class="pipeline-sub">Human decision support</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="live-panel">
+        <div class="live-card">
+          <div class="live-label">Live model signal</div>
+          <div class="live-value"><span id="liveProbability">0.973</span> decline probability</div>
+          <div class="risk-meter"><div class="risk-meter-fill"></div></div>
+        </div>
+        <div class="live-card">
+          <div class="live-label">Top review priority</div>
+          <div class="live-value">#<span id="liveRank">1</span></div>
+          <div class="queue-note">High-risk + high-exposure</div>
+        </div>
+      </div>
+
+    </div>
+
+  </header>
+
+
+  <!-- =========================
+       CONTENT
+  ========================== -->
+
+  <div class="content-layout">
+
+    <aside class="toc">
+
+      <div class="toc-title">
+        Contents
+      </div>
+
+      <div class="toc-links">
+
+        <a href="#problem">1. Problem framing</a>
+        <a href="#data">2. Data safety</a>
+        <a href="#baseline">3. Baseline</a>
+        <a href="#model">4. Model / analysis</a>
+        <a href="#evaluation">5. Evaluation</a>
+        <a href="#interpretation">6. Interpretation</a>
+        <a href="#recommendation">7. Recommendation</a>
+        <a href="#top20">Top 20 action review</a>
+        <a href="#reproducibility">9. Reproducibility</a>
+        <a href="#acknowledgments">10. Acknowledgments</a>
+        <a href="#claims">Claims checklist</a>
+
+      </div>
+
+    </aside>
+
+
+    <main>
+
+      <!-- ABSTRACT -->
+
+      <section>
+
+        <div class="card abstract">
+
+          <strong>Abstract.</strong>
+
+          Can historical search-performance and content-lifecycle signals
+          identify content pages likely to experience a meaningful decline
+          in organic search impressions over the following 30 days?
+
+          This project uses the FlyRank pseudonymized warehouse and a
+          page-client prediction grain, with March 2026 features and April
+          2026 outcomes.
+
+          Logistic Regression uses five pre-decision features and initially
+          improves the transparent review baseline at the top of the ranking.
+
+          However, grouped-by-client validation produces a lower and more
+          conservative estimate of generalization.
+
+          The final output is therefore a human-reviewed decision-support
+          queue rather than an autonomous content-management system.
+
+        </div>
+
+      </section>
+
+
+      <!-- =========================
+           1. PROBLEM
+      ========================== -->
+
+      <section id="problem">
+
+        <h2>1. Problem framing</h2>
+
+        <h3>Decision</h3>
+
+        <p>
+          The decision supported by this work is:
+        </p>
+
+        <blockquote>
+          <strong>
+            Which content pages should an SEO/content team inspect first
+            because their historical signals indicate elevated measured risk
+            of near-term organic-impression decline?
+          </strong>
+        </blockquote>
+
+        <p>
+          The unit of analysis is
+          <strong>one content page for one client at one prediction point.</strong>
+        </p>
+
+        <p>
+          The output is a
+          <strong>ranked risk score</strong>
+          plus a human-readable reason code and suggested review action.
+        </p>
+
+        <p>A human reviewer can use the queue to:</p>
+
+        <ul>
+          <li>prioritize pages for inspection;</li>
+          <li>review historical search exposure and ranking context;</li>
+          <li>
+            decide whether the page needs a freshness, relevance,
+            technical, or search-intent investigation;
+          </li>
+          <li>
+            choose between refresh, investigation, monitoring,
+            leaving unchanged, or escalation.
+          </li>
+        </ul>
+
+        <p>
+          The cost of a wrong call is asymmetric. A false positive consumes
+          editorial/SEO review capacity. A false negative can delay
+          investigation of a page that subsequently loses search exposure.
+          Because the model does not establish causality, the intended value
+          is prioritization rather than automatic intervention.
+        </p>
+
+
+        <h3>Research question</h3>
+
+        <blockquote>
+          Can historical search-performance and content-lifecycle signals
+          identify pages likely to experience a
+          <strong>&gt;20% decline in organic search impressions</strong>
+          over the next 30 days?
+        </blockquote>
+
+        <p>The prediction setup used in Week 5 was:</p>
+
+        <div class="metric-grid">
+
+          <div class="metric">
+            <div class="metric-value">Mar 2026</div>
+            <div class="metric-label">Feature window</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-value">Apr 1</div>
+            <div class="metric-label">Prediction point</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-value">30 days</div>
+            <div class="metric-label">Target horizon</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-value">&gt;20%</div>
+            <div class="metric-label">Decline threshold</div>
+          </div>
+
+        </div>
+
+        <ul>
+          <li>
+            Feature window:
+            <code>2026-03-01 → 2026-03-31</code>
+          </li>
+
+          <li>
+            Prediction point:
+            <code>2026-04-01</code>
+          </li>
+
+          <li>
+            Target window:
+            <code>2026-04-01 → 2026-04-30</code>
+          </li>
+        </ul>
+
+      </section>
+
+
+      <!-- =========================
+           2. DATA
+      ========================== -->
+
+      <section id="data">
+
+        <h2>2. Data safety</h2>
+
+        <h3>Warehouse release</h3>
+
+        <p>
+          The work uses the
+          <strong>FlyRank internship warehouse release</strong>
+          rather than the small starter CSV.
+        </p>
+
+        <p>The warehouse contains:</p>
+
+        <ul>
+          <li><code>dim_clients</code> — client-level metadata;</li>
+          <li><code>dim_content</code> — content metadata;</li>
+          <li>
+            <code>fact_content_daily_performance</code>
+            — daily page/client performance;
+          </li>
+          <li>
+            <code>fact_content_query_90d</code>
+            — query-mix context.
+          </li>
+        </ul>
+
+        <div class="callout callout-blue">
+
+          <div class="callout-title">
+            Dataset scale
+          </div>
+
+          <p>
+            The daily fact table contains
+            <strong>78,835,655 rows</strong>
+            and covers
+            <strong>2025-01-27 through 2026-06-30</strong>.
+          </p>
+
+          <p>
+            DuckDB is used to aggregate hosted Parquet data before bringing
+            only the modeling frame into pandas.
+          </p>
+
+        </div>
+
+        <p>
+          The modeling frame produced in Week 5 contained
+          <strong>100,893 page-client observations.</strong>
+        </p>
+
+
+        <h3>Features</h3>
+
+        <div class="table-wrapper">
+
+          <table>
+
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Meaning</th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              <tr>
+                <td><code>imp_prev30</code></td>
+                <td>Previous-30-day impressions</td>
+              </tr>
+
+              <tr>
+                <td><code>clk_prev30</code></td>
+                <td>Previous-30-day clicks</td>
+              </tr>
+
+              <tr>
+                <td><code>avg_position_prev30</code></td>
+                <td>Previous-30-day average search position</td>
+              </tr>
+
+              <tr>
+                <td><code>days_with_impressions</code></td>
+                <td>
+                  Number of days with observed impressions in
+                  the feature window
+                </td>
+              </tr>
+
+              <tr>
+                <td><code>content_age_days</code></td>
+                <td>
+                  Content age at the prediction point
+                </td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+
+        <h3>Deliberately excluded</h3>
+
+        <ul>
+
+          <li>
+            <code>imp_next30</code> and <code>clk_next30</code>:
+            future target-window measurements;
+          </li>
+
+          <li>
+            <code>is_declining</code>: the target itself;
+          </li>
+
+          <li>
+            <code>impression_change_pct</code>:
+            directly uses the future target window and was deliberately
+            tested as a leaky feature;
+          </li>
+
+          <li>
+            <code>trend_direction</code> and <code>trend_pct</code>:
+            label-derived/sibling fields and therefore not valid predictors;
+          </li>
+
+          <li>
+            product decision fields such as priority scores, health scores,
+            action types, refresh tiers, or flags;
+          </li>
+
+          <li>
+            <code>client_hash_id</code> and <code>content_hash_id</code>
+            as numerical/predictive inputs.
+          </li>
+
+        </ul>
+
+
+        <h3>Leakage checks</h3>
+
+        <div class="callout callout-green">
+
+          <div class="callout-title">
+            Leakage audit passed
+          </div>
+
+          <p>
+            The Week-6 audit found no future-window, label-derived, or
+            product-decision contamination in the final five features.
+          </p>
+
+        </div>
+
+        <p>
+          A deliberately leaky experiment added
+          <code>impression_change_pct</code>.
+          ROC-AUC increased from
+          <strong>0.65 to 1.00</strong>
+          under the random-split audit.
+        </p>
+
+        <p>
+          This was treated as a successful leakage test, not as model
+          performance. The feature was excluded from the final model.
+        </p>
+
+        <div class="callout callout-red">
+
+          <div class="callout-title">
+            Important
+          </div>
+
+          <p>
+            No client names, URLs, raw queries, domains, titles, or other
+            identifying information are used in this public report.
+          </p>
+
+        </div>
+
+      </section>
+
+
+      <!-- =========================
+           3. BASELINE
+      ========================== -->
+
+      <section id="baseline">
+
+        <h2>3. Baseline</h2>
+
+        <p>
+          The baseline was deliberately simple and transparent:
+        </p>
+
+        <blockquote>
+          A page receives a higher review score when it has meaningful
+          historical search visibility and is stale enough to deserve
+          attention; among qualifying pages, higher historical impressions
+          receive a higher score.
+        </blockquote>
+
+        <p>The baseline implementation used:</p>
+
+        <ul>
+          <li>a visibility threshold;</li>
+          <li>a staleness threshold;</li>
+          <li>
+            historical impressions to rank qualifying pages;
+          </li>
+          <li>
+            an explicit reason code for why the page entered the queue.
+          </li>
+        </ul>
+
+        <p>
+          The baseline is a fair comparison because it answers the same
+          operational question as the model:
+          <strong>which pages should be reviewed first?</strong>
+        </p>
+
+
+        <h3>Baseline performance</h3>
+
+        <div class="table-wrapper">
+
+          <table>
+
+            <thead>
+              <tr>
+                <th>Ranking metric</th>
+                <th>Baseline</th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              <tr>
+                <td>Precision@20</td>
+                <td><strong>0.35</strong></td>
+              </tr>
+
+              <tr>
+                <td>Precision@50</td>
+                <td><strong>0.38</strong></td>
+              </tr>
+
+              <tr>
+                <td>Precision@100</td>
+                <td><strong>0.36</strong></td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+        <div class="metric-grid">
+
+          <div class="metric">
+            <div class="metric-value">51.48%</div>
+            <div class="metric-label">Full-frame decline rate</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-value">51,944</div>
+            <div class="metric-label">Declining observations</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-value">48,949</div>
+            <div class="metric-label">Non-declining observations</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-value">40.2%</div>
+            <div class="metric-label">Test-set base rate</div>
+          </div>
+
+        </div>
+
+        <p>
+          This base rate matters: a ranking precision of
+          <strong>0.46</strong>
+          should not be interpreted without knowing that roughly
+          <strong>0.40</strong>
+          of the test observations were positive.
+        </p>
+
+      </section>
+
+
+      <!-- =========================
+           4. MODEL
+      ========================== -->
+
+      <section id="model">
+
+        <h2>4. Model / analysis</h2>
+
+        <h3>Method</h3>
+
+        <p>
+          Logistic Regression was selected first because the task is binary
+          classification with an observed future label, and because a
+          readable model is useful for understanding the signals before
+          adding complexity.
+        </p>
+
+        <p>
+          Random Forest was also evaluated as a stronger nonlinear
+          alternative.
+        </p>
+
+        <p>
+          Logistic Regression is the main model discussed in this report
+          because its behavior is easier to inspect and it already improved
+          the transparent ranking baseline on the initial evaluation.
+        </p>
+
+
+        <h3>Week-5 model comparison</h3>
+
+        <div class="table-wrapper">
+
+          <table>
+
+            <thead>
+
+              <tr>
+                <th>Model</th>
+                <th>Precision@20</th>
+                <th>Precision@50</th>
+                <th>Precision@100</th>
+                <th>ROC-AUC</th>
+                <th>Precision</th>
+                <th>Recall</th>
+                <th>F1</th>
+                <th>Base rate</th>
+              </tr>
+
+            </thead>
+
+            <tbody>
+
+              <tr>
+                <td><strong>Logistic Regression</strong></td>
+                <td>0.60</td>
+                <td>0.46</td>
+                <td>0.54</td>
+                <td>0.62</td>
+                <td>0.472</td>
+                <td>0.656</td>
+                <td>0.549</td>
+                <td>0.402</td>
+              </tr>
+
+              <tr>
+                <td>Random Forest</td>
+                <td>0.45</td>
+                <td>0.44</td>
+                <td>0.43</td>
+                <td>0.58</td>
+                <td>0.436</td>
+                <td>0.604</td>
+                <td>0.506</td>
+                <td>0.402</td>
+              </tr>
+
+              <tr>
+                <td>Transparent baseline</td>
+                <td>0.35</td>
+                <td>0.38</td>
+                <td>0.36</td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+                <td>—</td>
+                <td>0.402</td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+        <div class="callout callout-blue">
+
+          <div class="callout-title">
+            Initial result
+          </div>
+
+          <p>
+            Logistic Regression showed a measured ranking improvement over
+            the hand-written baseline, particularly at the top of the queue.
+          </p>
+
+          <p>
+            The result should not be read as evidence that Logistic
+            Regression is universally superior. The later grouped validation
+            provides the more conservative view.
+          </p>
+
+        </div>
+
+      </section>
+
+
+      <!-- =========================
+           5. EVALUATION
+      ========================== -->
+
+      <section id="evaluation">
+
+        <h2>5. Evaluation</h2>
+
+        <h3>Initial Week-5 validation</h3>
+
+        <p>
+          The initial Week-5 model evaluation was used as the development
+          comparison.
+        </p>
+
+        <ul>
+          <li>Logistic Regression: Precision@20 = <strong>0.60</strong>;</li>
+          <li>Logistic Regression: Precision@50 = <strong>0.46</strong>;</li>
+          <li>Logistic Regression: ROC-AUC = <strong>0.62</strong>;</li>
+          <li>baseline: Precision@20 = <strong>0.35</strong>;</li>
+          <li>baseline: Precision@50 = <strong>0.38</strong>.</li>
+        </ul>
+
+
+        <h3>Honest grouped validation</h3>
+
+        <p>
+          Week 6 re-ran the Logistic Regression model with a
+          <strong>client-grouped split</strong>
+          so that no client appeared in both train and test.
+        </p>
+
+        <div class="metric-grid">
+
+          <div class="metric">
+            <div class="metric-value">84,384</div>
+            <div class="metric-label">Training rows</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-value">16,509</div>
+            <div class="metric-label">Test rows</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-value">32</div>
+            <div class="metric-label">Training clients</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-value">11</div>
+            <div class="metric-label">Test clients</div>
+          </div>
+
+        </div>
+
+        <div class="callout callout-green">
+
+          <div class="callout-title">
+            Validation integrity
+          </div>
+
+          <p>
+            Client overlap between train and test:
+            <strong>zero</strong>.
+          </p>
+
+          <p>
+            Test decline base rate:
+            <strong>0.402</strong>.
+          </p>
+
+        </div>
+
+
+        <h3>Before / after validation</h3>
+
+        <div class="table-wrapper">
+
+          <table>
+
+            <thead>
+
+              <tr>
+                <th>Validation design</th>
+                <th>Accuracy</th>
+                <th>Precision</th>
+                <th>Recall</th>
+                <th>F1</th>
+                <th>ROC-AUC</th>
+                <th>P@20</th>
+                <th>P@50</th>
+                <th>P@100</th>
+              </tr>
+
+            </thead>
+
+            <tbody>
+
+              <tr>
+                <td>Week-5 random split</td>
+                <td>0.601</td>
+                <td>0.579</td>
+                <td>0.823</td>
+                <td>0.680</td>
+                <td>0.650</td>
+                <td>0.65</td>
+                <td>0.66</td>
+                <td>0.64</td>
+              </tr>
+
+              <tr>
+                <td><strong>Grouped by client</strong></td>
+                <td>0.512</td>
+                <td>0.440</td>
+                <td>0.786</td>
+                <td>0.564</td>
+                <td>0.621</td>
+                <td>0.60</td>
+                <td>0.46</td>
+                <td>0.54</td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+        <p>
+          The drop is itself an important result. It suggests that the
+          initial random split gave a more optimistic estimate of
+          generalization than the client-held-out evaluation.
+        </p>
+
+        <p>
+          The grouped result is the more appropriate evidence for the
+          question:
+        </p>
+
+        <blockquote>
+          Does the model work on pages from a client it did not see during
+          training?
+        </blockquote>
+
+
+        <h3>Error analysis</h3>
+
+        <p>
+          The Week-5 Logistic Regression evaluation contained:
+        </p>
+
+        <ul>
+          <li>9,355 correct predictions;</li>
+          <li>4,874 false positives;</li>
+          <li>2,280 false negatives.</li>
+        </ul>
+
+
+        <div class="table-wrapper">
+
+          <table>
+
+            <thead>
+
+              <tr>
+                <th>Example</th>
+                <th>Previous impressions</th>
+                <th>Previous clicks</th>
+                <th>Avg. position</th>
+                <th>Age</th>
+                <th>Model probability</th>
+                <th>Actual</th>
+              </tr>
+
+            </thead>
+
+            <tbody>
+
+              <tr>
+                <td>FP 1</td>
+                <td>42,185</td>
+                <td>4</td>
+                <td>9.10</td>
+                <td>70 days</td>
+                <td>0.723</td>
+                <td>Not declining</td>
+              </tr>
+
+              <tr>
+                <td>FP 2</td>
+                <td>46,938</td>
+                <td>11</td>
+                <td>4.11</td>
+                <td>435 days</td>
+                <td>0.671</td>
+                <td>Not declining</td>
+              </tr>
+
+              <tr>
+                <td>FP 3</td>
+                <td>41,655</td>
+                <td>13</td>
+                <td>5.06</td>
+                <td>257 days</td>
+                <td>0.650</td>
+                <td>Not declining</td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+        <p>
+          These cases show why a score is not a decision. Pages can have
+          high exposure, limited clicks, or older lifecycle signals without
+          actually declining in the next 30 days.
+        </p>
+
+
+        <h3>Feature interpretation</h3>
+
+        <p>
+          Permutation importance under the grouped model was:
+        </p>
+
+        <div class="table-wrapper">
+
+          <table>
+
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>Mean importance</th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              <tr>
+                <td><code>days_with_impressions</code></td>
+                <td><strong>0.0980</strong></td>
+              </tr>
+
+              <tr>
+                <td><code>clk_prev30</code></td>
+                <td><strong>0.0695</strong></td>
+              </tr>
+
+              <tr>
+                <td><code>avg_position_prev30</code></td>
+                <td>0.0048</td>
+              </tr>
+
+              <tr>
+                <td><code>imp_prev30</code></td>
+                <td>0.0007</td>
+              </tr>
+
+              <tr>
+                <td><code>content_age_days</code></td>
+                <td>-0.0029</td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+        <p>
+          The strongest measured contribution came from
+          <strong>days with impressions</strong>,
+          followed by
+          <strong>previous-30-day clicks</strong>.
+        </p>
+
+        <p>
+          These results are directional rather than causal. They describe
+          what the fitted model relied on when ranking this validation set;
+          they do not show that changing a feature would cause future search
+          performance to change.
+        </p>
+
+      </section>
+
+
+      <!-- =========================
+           6. INTERPRETATION
+      ========================== -->
+
+      <section id="interpretation">
+
+        <h2>6. Interpretation</h2>
+
+        <h3>1. Historical visibility is useful, but not sufficient</h3>
+
+        <p>
+          Pages with meaningful historical exposure provide a more useful
+          population for review than pages with almost no observed search
+          activity. This supports the basic idea behind the transparent
+          baseline.
+        </p>
+
+        <p>
+          However, historical impressions alone do not identify future
+          decline reliably enough to replace a learned ranking.
+        </p>
+
+
+        <h3>2. Engagement-related history matters</h3>
+
+        <p>
+          The grouped permutation audit placed previous-30-day clicks second
+          among the five features.
+        </p>
+
+        <p>
+          The Logistic Regression interpretation also showed an inverse
+          relationship between historical clicks and predicted decline
+          probability, conditional on the other features.
+        </p>
+
+        <div class="callout callout-orange">
+
+          <div class="callout-title">
+            Interpretation caution
+          </div>
+
+          <p>
+            This should be described as an observed model relationship,
+            not as evidence that clicks protect pages from decline.
+          </p>
+
+        </div>
+
+
+        <h3>3. Freshness/decay is not a simple monotonic rule</h3>
+
+        <div class="table-wrapper">
+
+          <table>
+
+            <thead>
+
+              <tr>
+                <th>Freshness bucket</th>
+                <th>n</th>
+                <th>Median previous impressions</th>
+                <th>Mean measured decline risk</th>
+              </tr>
+
+            </thead>
+
+            <tbody>
+
+              <tr>
+                <td>&le;90 days</td>
+                <td>33,070</td>
+                <td>745.0</td>
+                <td>46.63%</td>
+              </tr>
+
+              <tr>
+                <td>91–180 days</td>
+                <td>16,075</td>
+                <td>985.0</td>
+                <td>55.05%</td>
+              </tr>
+
+              <tr>
+                <td>181–365 days</td>
+                <td>37,434</td>
+                <td>881.5</td>
+                <td>53.83%</td>
+              </tr>
+
+              <tr>
+                <td>&gt;365 days</td>
+                <td>14,314</td>
+                <td>595.0</td>
+                <td>52.54%</td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+        <p>
+          The pattern is
+          <strong>not monotonic</strong>.
+          The 91–180 day group had the highest measured risk, while the
+          oldest group did not.
+        </p>
+
+        <blockquote>
+          In this data, freshness is directionally associated with the
+          measured review-priority signal, but the relationship is not a
+          simple “older always means riskier” pattern.
+        </blockquote>
+
+        <div class="callout callout-red">
+
+          <div class="callout-title">
+            Causal limitation
+          </div>
+
+          <p>
+            The analysis does <strong>not</strong> show that refreshing a
+            page causes traffic to improve.
+          </p>
+
+        </div>
+
+      </section>
+
+
+      <!-- =========================
+           7. RECOMMENDATION
+      ========================== -->
+
+      <section id="recommendation">
+
+        <h2>7. Recommendation</h2>
+
+        <div class="callout callout-blue">
+
+          <div class="callout-title">
+            Operating principle
+          </div>
+
+          <p>
+            The model output is a ranked review queue,
+            <strong>not an automatic content-management system.</strong>
+          </p>
+
+        </div>
+
+
+        <h3>Ranked actions</h3>
+
+        <div class="action-list">
+
+
+          <div class="action">
+
+            <div class="action-number">1</div>
+
+            <h3>
+              High-risk + high-exposure — Prioritize for manual performance
+              review
+            </h3>
+
+            <div class="reason">
+              high_risk_high_exposure
+            </div>
+
+            <p>
+              Use when a page has a high model score and substantial
+              historical search exposure.
+            </p>
+
+            <strong>Human question:</strong>
+
+            <blockquote>
+              If this page is genuinely at risk, is the potential value of
+              reviewing it high enough to justify the review cost?
+            </blockquote>
+
+          </div>
+
+
+          <div class="action">
+
+            <div class="action-number">2</div>
+
+            <h3>
+              High-risk + stale + visible — Review freshness and content
+              relevance
+            </h3>
+
+            <div class="reason">
+              high_risk_stale_visible
+            </div>
+
+            <p><strong>Human questions:</strong></p>
+
+            <ul>
+              <li>Is the information still accurate?</li>
+              <li>Has the topic changed?</li>
+              <li>Does the page still match the search intent?</li>
+              <li>
+                Is the historical exposure meaningful enough to justify
+                a refresh review?
+              </li>
+            </ul>
+
+          </div>
+
+
+          <div class="action">
+
+            <div class="action-number">3</div>
+
+            <h3>
+              High-risk + weak position — Review search intent, relevance
+              and ranking context
+            </h3>
+
+            <div class="reason">
+              high_risk_position
+            </div>
+
+            <p><strong>Human questions:</strong></p>
+
+            <ul>
+              <li>Has the search landscape changed?</li>
+              <li>Does the page still match the intended query?</li>
+              <li>Are there technical or indexing issues?</li>
+              <li>
+                Are competitors or SERP features changing the opportunity?
+              </li>
+            </ul>
+
+          </div>
+
+
+          <div class="action">
+
+            <div class="action-number">4</div>
+
+            <h3>
+              High-risk + General manual review
+            </h3>
+
+            <div class="reason">
+              high_risk_general_review
+            </div>
+
+            <p>
+              Use when the model assigns a high risk score but no single
+              diagnostic signal is dominant enough to justify a more
+              specific action.
+            </p>
+
+            <p>
+              <strong>Suggested action:</strong>
+              broader manual review.
+            </p>
+
+            <p><strong>Human questions:</strong></p>
+
+            <ul>
+              <li>What evidence makes this page look risky?</li>
+              <li>
+                Is the risk consistent with its historical search
+                performance?
+              </li>
+              <li>
+                Is there a content, relevance, technical, or
+                search-intent explanation?
+              </li>
+              <li>
+                Is there enough potential value to justify further
+                investigation?
+              </li>
+            </ul>
+
+            <div class="callout callout-orange">
+
+              <div class="callout-title">
+                Fallback category
+              </div>
+
+              <p>
+                This category should be treated as a fallback, not as
+                evidence that a specific problem has been identified.
+                The model is flagging the page for review; it is not
+                diagnosing the cause of decline.
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <h3>Human-review checklist</h3>
+
+        <ul class="checklist">
+
+          <li>Search intent</li>
+          <li>Content relevance</li>
+          <li>Freshness</li>
+          <li>Current search context</li>
+          <li>Historical evidence</li>
+          <li>Business context</li>
+          <li>Technical SEO issues</li>
+          <li>Measurement quality</li>
+
+        </ul>
+
+        <p>
+          The final human decision should be recorded separately from
+          the model recommendation.
+        </p>
+
+
+        <h3>What should NOT be automated</h3>
+
+        <div class="callout callout-red">
+
+          <ul>
+
+            <li>Publish content changes;</li>
+            <li>Rewrite a page;</li>
+            <li>Delete a page;</li>
+            <li>Change search intent;</li>
+            <li>Change canonical URLs;</li>
+            <li>Change internal linking strategy;</li>
+            <li>Change metadata without review;</li>
+            <li>Declare a page a ranking failure;</li>
+            <li>Claim that a refresh will improve traffic;</li>
+            <li>
+              Claim a causal mechanism for Google's ranking;
+            </li>
+            <li>Override business priorities.</li>
+
+          </ul>
+
+        </div>
+
+
+        <h3>Cost/value thinking</h3>
+
+        <p>
+          The queue is most valuable when review capacity is scarce.
+        </p>
+
+        <blockquote>
+          <strong>
+            Review the highest-risk, highest-exposure pages first, but only
+            after checking that the page has enough observed history to make
+            the review worthwhile.
+          </strong>
+        </blockquote>
+
+        <p>
+          The cost of a false positive is reviewer time. The cost of a false
+          negative is a missed opportunity to investigate a potentially
+          declining page.
+        </p>
+
+        <p>
+          The model does not estimate the monetary value of either outcome,
+          so those costs remain a human/business decision.
+        </p>
+
+
+        <h3>Monitoring and retraining</h3>
+
+        <p>The queue should be re-evaluated when:</p>
+
+        <ul>
+
+          <li>
+            Precision@K falls materially below the validated reference;
+          </li>
+
+          <li>
+            ROC-AUC or ranking lift degrades across fresh periods;
+          </li>
+
+          <li>
+            the decline base rate shifts substantially;
+          </li>
+
+          <li>
+            the distribution of impressions/clicks/position changes;
+          </li>
+
+          <li>
+            new clients or content populations differ materially from the
+            development population;
+          </li>
+
+          <li>
+            feature missingness or measurement coverage changes;
+          </li>
+
+          <li>
+            the definition of the business action changes.
+          </li>
+
+        </ul>
+
+        <p>
+          Retraining should be considered after a sustained distribution or
+          performance change, not because one evaluation period is noisy.
+        </p>
+
+      </section>
+
+
+      <!-- =========================
+           TOP 20 ACTION REVIEW
+      ========================== -->
+
+      <section id="top20" class="reveal">
+
+        <h2>Top 20 action review queue</h2>
+
+        <p>
+          The model ranking can be converted into a concrete operational queue:
+          the highest-risk pages are surfaced first, together with the reason
+          code and suggested human action. The table below shows the top 20
+          records from the action-review output.
+        </p>
+
+        <div class="callout callout-blue">
+          <div class="callout-title">How to read this queue</div>
+          <p>
+            <strong>Model rank</strong> orders pages by predicted decline probability.
+            <strong>Reason code</strong> explains the dominant review context, while
+            <strong>suggested action</strong> turns the score into a human-review task.
+            The model does not make the final content decision.
+          </p>
+        </div>
+
+        <div class="table-wrapper queue-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Content ID</th>
+                <th>Decline probability</th>
+                <th>Reason code</th>
+                <th>Suggested action</th>
+                <th>Imp. prev30</th>
+                <th>Clicks prev30</th>
+                <th>Avg. position</th>
+                <th>Age</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><span class="rank-pill">1</span></td><td><code>content_44f34c0a90047651</code></td><td class="probability">97.34% <span class="probability-bar" style="--prob:97.34%"><span></span></span></td><td><span class="reason-mini">high_risk_high_exposure</span></td><td class="queue-action">Prioritize for manual performance review</td><td>212,404</td><td>24</td><td>7.35</td><td>70d</td></tr>
+              <tr><td><span class="rank-pill">2</span></td><td><code>content_8e1334d6356668e3</code></td><td class="probability">93.21% <span class="probability-bar" style="--prob:93.21%"><span></span></span></td><td><span class="reason-mini">high_risk_stale_visible</span></td><td class="queue-action">Review freshness and content relevance</td><td>134,984</td><td>1</td><td>4.55</td><td>411d</td></tr>
+              <tr><td><span class="rank-pill">3</span></td><td><code>content_fec55986a1868d62</code></td><td class="probability">91.85% <span class="probability-bar" style="--prob:91.85%"><span></span></span></td><td><span class="reason-mini">high_risk_stale_visible</span></td><td class="queue-action">Review freshness and content relevance</td><td>124,075</td><td>1</td><td>9.39</td><td>411d</td></tr>
+              <tr><td><span class="rank-pill">4</span></td><td><code>content_bdf60c86117079be</code></td><td class="probability">88.30% <span class="probability-bar" style="--prob:88.30%"><span></span></span></td><td><span class="reason-mini">high_risk_stale_visible</span></td><td class="queue-action">Review freshness and content relevance</td><td>112,429</td><td>12</td><td>30.77</td><td>231d</td></tr>
+              <tr><td><span class="rank-pill">5</span></td><td><code>content_559cdd76da9306de</code></td><td class="probability">87.66% <span class="probability-bar" style="--prob:87.66%"><span></span></span></td><td><span class="reason-mini">high_risk_stale_visible</span></td><td class="queue-action">Review freshness and content relevance</td><td>97,378</td><td>2</td><td>36.71</td><td>217d</td></tr>
+              <tr><td><span class="rank-pill">6</span></td><td><code>content_34a70fea29d15f24</code></td><td class="probability">87.52% <span class="probability-bar" style="--prob:87.52%"><span></span></span></td><td><span class="reason-mini">high_risk_stale_visible</span></td><td class="queue-action">Review freshness and content relevance</td><td>143,019</td><td>43</td><td>3.22</td><td>279d</td></tr>
+              <tr><td><span class="rank-pill">7</span></td><td><code>content_f6116743b00afc2d</code></td><td class="probability">87.30% <span class="probability-bar" style="--prob:87.30%"><span></span></span></td><td><span class="reason-mini">high_risk_stale_visible</span></td><td class="queue-action">Review freshness and content relevance</td><td>107,584</td><td>15</td><td>9.54</td><td>194d</td></tr>
+              <tr><td><span class="rank-pill">8</span></td><td><code>content_164c1f53f13bcee1</code></td><td class="probability">87.02% <span class="probability-bar" style="--prob:87.02%"><span></span></span></td><td><span class="reason-mini">high_risk_position</span></td><td class="queue-action">Review search intent, relevance and ranking context</td><td>89,982</td><td>2</td><td>24.08</td><td>84d</td></tr>
+              <tr><td><span class="rank-pill">9</span></td><td><code>content_9c057b66c30a3abb</code></td><td class="probability">85.61% <span class="probability-bar" style="--prob:85.61%"><span></span></span></td><td><span class="reason-mini">high_risk_stale_visible</span></td><td class="queue-action">Review freshness and content relevance</td><td>83,834</td><td>1</td><td>11.20</td><td>244d</td></tr>
+              <tr><td><span class="rank-pill">10</span></td><td><code>content_cd3d932d4e1c8db0</code></td><td class="probability">85.20% <span class="probability-bar" style="--prob:85.20%"><span></span></span></td><td><span class="reason-mini">high_risk_stale_visible</span></td><td class="queue-action">Review freshness and content relevance</td><td>89,332</td><td>4</td><td>7.79</td><td>448d</td></tr>
+              <tr><td><span class="rank-pill">11</span></td><td><code>content_9540d884af3e41fd</code></td><td class="probability">83.65% <span class="probability-bar" style="--prob:83.65%"><span></span></span></td><td><span class="reason-mini">high_risk_high_exposure</span></td><td class="queue-action">Prioritize for manual performance review</td><td>82,376</td><td>11</td><td>7.79</td><td>37d</td></tr>
+              <tr><td><span class="rank-pill">12</span></td><td><code>content_82e35c4845e6c391</code></td><td class="probability">83.54% <span class="probability-bar" style="--prob:83.54%"><span></span></span></td><td><span class="reason-mini">high_risk_position</span></td><td class="queue-action">Review search intent, relevance and ranking context</td><td>143,907</td><td>60</td><td>22.56</td><td>156d</td></tr>
+              <tr><td><span class="rank-pill">13</span></td><td><code>content_ab91e088440ace78</code></td><td class="probability">82.52% <span class="probability-bar" style="--prob:82.52%"><span></span></span></td><td><span class="reason-mini">high_risk_stale_visible</span></td><td class="queue-action">Review freshness and content relevance</td><td>77,963</td><td>5</td><td>43.17</td><td>218d</td></tr>
+              <tr><td><span class="rank-pill">14</span></td><td><code>content_73aa61dcedebbf30</code></td><td class="probability">82.20% <span class="probability-bar" style="--prob:82.20%"><span></span></span></td><td><span class="reason-mini">high_risk_position</span></td><td class="queue-action">Review search intent, relevance and ranking context</td><td>80,124</td><td>9</td><td>45.70</td><td>142d</td></tr>
+              <tr><td><span class="rank-pill">15</span></td><td><code>content_425715547c6a3ea8</code></td><td class="probability">81.65% <span class="probability-bar" style="--prob:81.65%"><span></span></span></td><td><span class="reason-mini">high_risk_stale_visible</span></td><td class="queue-action">Review freshness and content relevance</td><td>71,513</td><td>3</td><td>6.40</td><td>372d</td></tr>
+              <tr><td><span class="rank-pill">16</span></td><td><code>content_f0703fc6ae385591</code></td><td class="probability">81.48% <span class="probability-bar" style="--prob:81.48%"><span></span></span></td><td><span class="reason-mini">high_risk_high_exposure</span></td><td class="queue-action">Prioritize for manual performance review</td><td>63,201</td><td>2</td><td>10.06</td><td>37d</td></tr>
+              <tr><td><span class="rank-pill">17</span></td><td><code>content_4889078a4e2655ff</code></td><td class="probability">81.31% <span class="probability-bar" style="--prob:81.31%"><span></span></span></td><td><span class="reason-mini">high_risk_stale_visible</span></td><td class="queue-action">Review freshness and content relevance</td><td>74,450</td><td>7</td><td>32.40</td><td>217d</td></tr>
+              <tr><td><span class="rank-pill">18</span></td><td><code>content_9d1e94cbd32b0a41</code></td><td class="probability">81.16% <span class="probability-bar" style="--prob:81.16%"><span></span></span></td><td><span class="reason-mini">high_risk_stale_visible</span></td><td class="queue-action">Review freshness and content relevance</td><td>81,479</td><td>13</td><td>34.64</td><td>230d</td></tr>
+              <tr><td><span class="rank-pill">19</span></td><td><code>content_b875a2f306635a58</code></td><td class="probability">81.15% <span class="probability-bar" style="--prob:81.15%"><span></span></span></td><td><span class="reason-mini">high_risk_position</span></td><td class="queue-action">Review search intent, relevance and ranking context</td><td>68,657</td><td>5</td><td>31.54</td><td>84d</td></tr>
+              <tr><td><span class="rank-pill">20</span></td><td><code>content_49267c758cdcb3a8</code></td><td class="probability">80.31% <span class="probability-bar" style="--prob:80.31%"><span></span></span></td><td><span class="reason-mini">high_risk_position</span></td><td class="queue-action">Review search intent, relevance and ranking context</td><td>73,768</td><td>12</td><td>32.66</td><td>75d</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric reveal">
+            <div class="metric-value" data-count="20">0</div>
+            <div class="metric-label">Pages surfaced in top review queue</div>
+          </div>
+          <div class="metric reveal">
+            <div class="metric-value">97.34%</div>
+            <div class="metric-label">Highest predicted decline probability</div>
+          </div>
+          <div class="metric reveal">
+            <div class="metric-value">80.31%</div>
+            <div class="metric-label">20th-ranked predicted probability</div>
+          </div>
+          <div class="metric reveal">
+            <div class="metric-value">Human</div>
+            <div class="metric-label">Final decision owner</div>
+          </div>
+        </div>
+
+      </section>
+
+
+      <!-- =========================
+           9. REPRODUCIBILITY
+      ========================== -->
+
+      <section id="reproducibility">
+
+        <h2>9. Reproducibility</h2>
+
+        <p>
+          The project is organized as a sequence of notebooks:
+        </p>
+
+        <div class="table-wrapper">
+
+          <table>
+
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Notebook</th>
+              </tr>
+            </thead>
+
+            <tbody>
+
+              <tr>
+                <td>1</td>
+                <td><code>w01_research_question.ipynb</code></td>
+              </tr>
+
+              <tr>
+                <td>2</td>
+                <td><code>w02_ml_task_framing.ipynb</code></td>
+              </tr>
+
+              <tr>
+                <td>3</td>
+                <td><code>w03_data_contract.ipynb</code></td>
+              </tr>
+
+              <tr>
+                <td>4</td>
+                <td><code>w03_feature_leakage_check.ipynb</code></td>
+              </tr>
+
+              <tr>
+                <td>5</td>
+                <td><code>w04_signal_audit.ipynb</code></td>
+              </tr>
+
+              <tr>
+                <td>6</td>
+                <td><code>w04_baseline_score.ipynb</code></td>
+              </tr>
+
+              <tr>
+                <td>7</td>
+                <td><code>w05_model.ipynb</code></td>
+              </tr>
+
+              <tr>
+                <td>8</td>
+                <td><code>w06_validation_audit.ipynb</code></td>
+              </tr>
+
+              <tr>
+                <td>9</td>
+                <td><code>w07_action_playbook.ipynb</code></td>
+              </tr>
+
+              <tr>
+                <td>10</td>
+                <td><code>capstone.ipynb</code></td>
+              </tr>
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+
+        <h3>Repository</h3>
+
+        <p>
+          <a
+            href="https://github.com/LNDOTIS/FlyRank-AI-Internship---Machine-Learning"
+            target="_blank"
+            rel="noopener noreferrer">
+            github.com/LNDOTIS/FlyRank-AI-Internship---Machine-Learning
+          </a>
+        </p>
+
+
+        <h3>Environment</h3>
+
+        <p>
+          The main modeling environment uses Python, pandas, NumPy, DuckDB,
+          Hugging Face access, scikit-learn, and matplotlib.
+        </p>
+
+        <p>
+          The warehouse is accessed through DuckDB over hosted Parquet data.
+          The Hugging Face token is supplied at runtime rather than committed
+          to the repository.
+        </p>
+
+        <div class="metric-grid">
+
+          <div class="metric">
+            <div class="metric-value">42</div>
+            <div class="metric-label">Principal random seed</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-value">78.8M</div>
+            <div class="metric-label">Daily fact rows</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-value">100.9K</div>
+            <div class="metric-label">Modeling observations</div>
+          </div>
+
+          <div class="metric">
+            <div class="metric-value">5</div>
+            <div class="metric-label">Final features</div>
+          </div>
+
+        </div>
+
+        <p>
+          The warehouse grain was checked before aggregation, and the final
+          feature set was audited for future-window, label-derived, and
+          product-decision leakage.
+        </p>
+
+      </section>
+
+
+      <!-- =========================
+           10. ACKNOWLEDGMENTS
+      ========================== -->
+
+      <section id="acknowledgments">
+
+        <h2>10. Acknowledgments &amp; data credit</h2>
+
+        <p>
+          Built on the
+          <strong>FlyRank ML Internship dataset</strong>.
+        </p>
+
+        <p>
+          Data credit:
+          <a
+            href="https://flyrank.ai/"
+            target="_blank"
+            rel="noopener noreferrer">
+            FlyRank
+          </a>
+        </p>
+
+        <p>
+          This project was completed as part of the FlyRank ML Internship
+          workflow and uses the pseudonymized internship warehouse release
+          supplied for the program.
+        </p>
+
+      </section>
+
+
+      <!-- =========================
+           CLAIMS
+      ========================== -->
+
+      <section id="claims">
+
+        <h2>Claims checklist</h2>
+
+        <div class="callout callout-green">
+
+          <div class="callout-title">
+            Language discipline
+          </div>
+
+          <p>
+            The report intentionally uses:
+          </p>
+
+          <ul>
+            <li><strong>observed</strong> for descriptive patterns;</li>
+            <li><strong>measured</strong> for evaluation results;</li>
+            <li><strong>directional</strong> for model interpretation;</li>
+            <li>
+              <strong>decision-support</strong> for recommendations.
+            </li>
+          </ul>
+
+        </div>
+
+        <p>
+          It does not claim that refreshing content causes traffic
+          improvement, does not claim to predict Google's ranking algorithm,
+          and does not expose client-identifying information.
+        </p>
+
+      </section>
+
+
+    </main>
+
+  </div>
+
+</div>
+
+
+<!-- =========================
+     FOOTER
+========================== -->
+
+<footer>
+
+  <div class="footer-inner">
+
+    <div>
+      © 2026 Long Nguyen
+    </div>
+
+    <div>
+      Predicting Near-Term Organic Search Decline
+    </div>
+
+  </div>
+
+</footer>
+
+
+
+<script>
+  // Lightweight interactions: no external libraries required.
+  document.addEventListener("DOMContentLoaded", () => {
+    const probability = document.getElementById("liveProbability");
+    const rank = document.getElementById("liveRank");
+
+    // Slowly cycle through the real top-20 probabilities supplied for the queue.
+    const probabilities = [
+      0.9734324008, 0.9320838198, 0.9185004722, 0.8830425571,
+      0.8765897383, 0.8752305848, 0.8729796397, 0.8701637632,
+      0.8560850041, 0.8520385514, 0.8365448793, 0.8354355695,
+      0.8252118167, 0.8219953613, 0.8165008479, 0.8148235786,
+      0.8130709284, 0.8115556918, 0.8114615319, 0.8031054159
+    ];
+
+    let i = 0;
+    setInterval(() => {
+      i = (i + 1) % probabilities.length;
+      if (probability) probability.textContent = probabilities[i].toFixed(3);
+      if (rank) rank.textContent = String(i + 1);
+    }, 2600);
+
+    // Scroll-triggered reveals keep the long report feeling alive without
+    // forcing animation on users who prefer reduced motion.
+    const revealItems = document.querySelectorAll(".reveal");
+    if ("IntersectionObserver" in window) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12 });
+      revealItems.forEach(el => observer.observe(el));
+    } else {
+      revealItems.forEach(el => el.classList.add("visible"));
+    }
+
+    // Count-up for the top-20 KPI.
+    const counters = document.querySelectorAll("[data-count]");
+    counters.forEach(counter => {
+      const target = Number(counter.dataset.count);
+      let started = false;
+      const run = () => {
+        if (started) return;
+        started = true;
+        const start = performance.now();
+        const duration = 900;
+        const tick = now => {
+          const progress = Math.min((now - start) / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          counter.textContent = String(Math.round(target * eased));
+          if (progress < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      };
+
+      if ("IntersectionObserver" in window) {
+        const io = new IntersectionObserver(entries => {
+          if (entries[0].isIntersecting) {
+            run();
+            io.disconnect();
+          }
+        }, { threshold: 0.4 });
+        io.observe(counter);
+      } else {
+        run();
+      }
+    });
+  });
+</script>
+
+</body>
+</html>
